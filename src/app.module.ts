@@ -12,6 +12,10 @@ import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { VipPackagesModule } from './vip-packages/vip-packages.module';
 import { TransactionsModule } from './transactions/transactions.module';
 import { StatsModule } from './stats/stats.module';
+import { SessionsModule } from './sessions/sessions.module';
+import { APP_GUARD } from '@nestjs/core';
+import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { RolesGuard } from './common/guards/roles.guard';
 
 @Module({
   imports: [
@@ -51,8 +55,20 @@ import { StatsModule } from './stats/stats.module';
     TransactionsModule,
 
     StatsModule,
+
+    SessionsModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
+    },
+  ],
 })
 export class AppModule { }
