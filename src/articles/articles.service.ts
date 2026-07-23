@@ -682,7 +682,6 @@ export class ArticlesService {
         }
 
         return (
-            user.role === UserRole.VIP &&
             user.vipExpiredAt !== null &&
             new Date(user.vipExpiredAt).getTime() >
             Date.now()

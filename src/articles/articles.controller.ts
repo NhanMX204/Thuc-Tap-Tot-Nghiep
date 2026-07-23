@@ -49,7 +49,6 @@ export class ArticlesController {
     }
 
     @Get('summary')
-    @Roles(UserRole.VIP, UserRole.ADMIN)
     @ApiBearerAuth('access-token')
     @ApiOperation({
         summary: 'Lấy nội dung bài viết cho VIP',
