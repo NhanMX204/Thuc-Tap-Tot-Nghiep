@@ -4,7 +4,16 @@ import {
     ParseIntPipe,
     Query,
     Param,
+    Req,
+    Res,
 } from '@nestjs/common';
+
+import { randomUUID } from 'crypto';
+import type {
+    Request,
+    Response,
+} from 'express';
+
 import {
     ApiBearerAuth,
     ApiOperation,
@@ -79,12 +88,57 @@ export class ArticlesController {
     read(
         @Param('articleId', ParseIntPipe)
         articleId: number,
+
         @CurrentUser()
         user: AuthenticatedUser | null,
+
+        @Req()
+        request: Request,
+
+        @Res({ passthrough: true })
+        response: Response,
     ) {
+        let readerKey =
+            request.cookies?.bdt_reader_key as
+            | string
+            | undefined;
+
+        /*
+         * Người chưa đăng nhập được nhận diện bằng
+         * cookie ngẫu nhiên có thời hạn một năm.
+         */
+        if (!user && !readerKey) {
+            readerKey = randomUUID();
+
+            response.cookie(
+                'bdt_reader_key',
+                readerKey,
+                {
+                    httpOnly: true,
+                    secure:
+                        process.env.NODE_ENV ===
+                        'production',
+                    sameSite: 'lax',
+                    maxAge:
+                        365 *
+                        24 *
+                        60 *
+                        60 *
+                        1000,
+                    path: '/',
+                },
+            );
+        }
+
         return this.articlesService.read(
             articleId,
-            user,
+            user ?? null,
+            {
+                readerKey,
+                ipAddress: request.ip,
+                userAgent:
+                    request.headers['user-agent'],
+            },
         );
     }
 }

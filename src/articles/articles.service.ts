@@ -10,6 +10,11 @@ import {
     Repository,
 } from 'typeorm';
 
+import {
+    ArticleViewsService,
+    RecordArticleViewInput,
+} from '../article-views/article-views.service';
+
 import { CategoriesService } from '../categories/categories.service';
 import { UserRole } from '../common/enums/user-role.enum';
 import { AuthenticatedUser } from '../common/interfaces/authenticated-user.interface';
@@ -33,6 +38,8 @@ export class ArticlesService {
         private readonly articleRepository: Repository<Article>,
 
         private readonly categoriesService: CategoriesService,
+
+        private readonly articleViewsService: ArticleViewsService,
     ) { }
 
     async search(query: ArticleSearchQueryDto) {
@@ -135,10 +142,16 @@ export class ArticlesService {
         };
     }
 
-    async read(
+    async getPublicArticleForInteraction(
+        articleId: number,
+    ): Promise<Article> {
+        return this.findPublicArticle(articleId);
+    }
+
+    async getAccessiblePublicArticle(
         articleId: number,
         user: AuthenticatedUser | null,
-    ) {
+    ): Promise<Article> {
         const article =
             await this.findPublicArticle(articleId);
 
@@ -147,24 +160,41 @@ export class ArticlesService {
             !this.canReadVipArticle(user)
         ) {
             throw new ForbiddenException(
-                'Bạn cần tài khoản VIP còn hạn để đọc bài viết này',
+                'Bạn cần tài khoản VIP còn hạn để sử dụng chức năng này',
             );
         }
 
-        await this.articleRepository.increment(
-            {
-                id: article.id,
-            },
-            'viewCount',
-            1,
-        );
+        return article;
+    }
+
+    async read(
+        articleId: number,
+        user: AuthenticatedUser | null,
+        viewInput: Omit<
+            RecordArticleViewInput,
+            'articleId' | 'userId'
+        >,
+    ) {
+        const article =
+            await this.getAccessiblePublicArticle(
+                articleId,
+                user,
+            );
+
+        const viewCount =
+            await this.articleViewsService.recordView({
+                articleId,
+                userId: user?.id,
+                readerKey: viewInput.readerKey,
+                ipAddress: viewInput.ipAddress,
+                userAgent: viewInput.userAgent,
+            });
 
         return {
             ...this.toDetailResponse(article),
-            viewCount: article.viewCount + 1,
+            viewCount,
         };
     }
-
     async getSummary(
         articleId: number,
         user: AuthenticatedUser,

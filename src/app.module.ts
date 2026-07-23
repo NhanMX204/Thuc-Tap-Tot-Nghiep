@@ -16,6 +16,7 @@ import { SessionsModule } from './sessions/sessions.module';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
+import { ArticleViewsModule } from './article-views/article-views.module';
 
 @Module({
   imports: [
@@ -57,6 +58,8 @@ import { RolesGuard } from './common/guards/roles.guard';
     StatsModule,
 
     SessionsModule,
+
+    ArticleViewsModule,
   ],
   controllers: [AppController],
   providers: [
