@@ -9,6 +9,7 @@ interface CreateUserData {
     name: string;
     email: string;
     passwordHash: string;
+    role?: UserRole;
 }
 
 @Injectable()
@@ -23,7 +24,7 @@ export class UsersService {
             name: data.name.trim(),
             email: data.email.trim().toLowerCase(),
             passwordHash: data.passwordHash,
-            role: UserRole.MEMBER,
+            role: data.role ?? UserRole.MEMBER,
             status: UserStatus.ACTIVE,
             vipExpiredAt: null,
         });

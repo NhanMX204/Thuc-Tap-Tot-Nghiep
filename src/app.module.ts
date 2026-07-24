@@ -13,10 +13,11 @@ import { VipPackagesModule } from './vip-packages/vip-packages.module';
 import { TransactionsModule } from './transactions/transactions.module';
 import { StatsModule } from './stats/stats.module';
 import { SessionsModule } from './sessions/sessions.module';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { ArticleViewsModule } from './article-views/article-views.module';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
 @Module({
   imports: [
@@ -71,6 +72,10 @@ import { ArticleViewsModule } from './article-views/article-views.module';
     {
       provide: APP_GUARD,
       useClass: RolesGuard,
+    },
+    {
+      provide: APP_FILTER,
+      useClass: AllExceptionsFilter,
     },
   ],
 })

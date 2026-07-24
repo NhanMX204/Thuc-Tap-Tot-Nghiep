@@ -35,7 +35,7 @@ export class AuthService {
     ) { }
 
     async register(registerDto: RegisterDto) {
-        const { name, email, password, confirmation } =
+        const { name, email, password, confirmation, role } =
             registerDto;
 
         if (password !== confirmation) {
@@ -64,6 +64,7 @@ export class AuthService {
             name,
             email: normalizedEmail,
             passwordHash,
+            role,
         });
 
         return {

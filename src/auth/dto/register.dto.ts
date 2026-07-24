@@ -1,14 +1,27 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
     IsEmail,
+    IsEnum,
     IsNotEmpty,
+    IsOptional,
     IsString,
     Matches,
     MaxLength,
     MinLength,
 } from 'class-validator';
+import { UserRole } from '../../common/enums/user-role.enum';
 
 export class RegisterDto {
+    @ApiPropertyOptional({
+        enum: [UserRole.MEMBER, UserRole.AUTHOR],
+        default: UserRole.MEMBER,
+        description: 'Loại tài khoản: MEMBER (độc giả) hoặc AUTHOR (tác giả)',
+    })
+    @IsOptional()
+    @IsEnum([UserRole.MEMBER, UserRole.AUTHOR], {
+        message: 'Loại tài khoản chỉ được là MEMBER hoặc AUTHOR',
+    })
+    role?: UserRole.MEMBER | UserRole.AUTHOR;
     @ApiProperty({
         example: 'Nguyen Van A',
         description: 'Họ và tên của người dùng',
