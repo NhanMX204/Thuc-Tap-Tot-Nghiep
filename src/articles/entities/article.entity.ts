@@ -64,6 +64,14 @@ export class Article {
     coverImage!: string | null;
 
     @Column({
+        name: 'cover_image_public_id',
+        type: 'varchar',
+        length: 500,
+        nullable: true,
+    })
+    coverImagePublicId!: string | null;
+
+    @Column({
         type: 'varchar',
         length: 255,
     })

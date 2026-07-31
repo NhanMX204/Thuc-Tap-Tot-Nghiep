@@ -7,8 +7,10 @@ import {
     IsOptional,
     IsString,
     MaxLength,
+    IsUrl,
     Min,
     MinLength,
+    IsBoolean,
 } from 'class-validator';
 
 import { ArticleType } from '../enums/article-type.enum';
@@ -25,13 +27,40 @@ export class UpdateArticleDto {
     categoryId!: number;
 
     @ApiProperty({
-        example: 'https://example.com/new-cover.jpg',
+        example:
+            'https://res.cloudinary.com/.../image/upload/cover.jpg',
+        required: false,
+    })
+    @IsOptional()
+    @IsUrl(
+        {
+            require_protocol: true,
+        },
+        {
+            message:
+                'Đường dẫn ảnh không hợp lệ',
+        },
+    )
+    @MaxLength(500)
+    coverImage?: string;
+
+    @ApiProperty({
+        example:
+            'bao-dien-tu/articles/user-3/abcxyz',
         required: false,
     })
     @IsOptional()
     @IsString()
     @MaxLength(500)
-    coverImage?: string;
+    coverImagePublicId?: string;
+
+    @ApiProperty({
+        example: false,
+        required: false,
+    })
+    @IsOptional()
+    @IsBoolean()
+    removeCoverImage?: boolean;
 
     @ApiProperty({
         example: 'Tiêu đề bài viết đã cập nhật',

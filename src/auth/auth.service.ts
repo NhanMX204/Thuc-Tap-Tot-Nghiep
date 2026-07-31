@@ -4,7 +4,16 @@ import {
     ForbiddenException,
     Injectable,
     UnauthorizedException,
+    ServiceUnavailableException,
 } from '@nestjs/common';
+import { randomInt } from 'crypto';
+import { MailService } from '../mail/mail.service';
+import { PasswordResetsService } from '../password-resets/password-resets.service';
+
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { VerifyResetCodeDto } from './dto/verify-reset-code.dto';
+import { PasswordResetTokenPayload } from './interfaces/password-reset-token-payload.interface';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -31,8 +40,191 @@ export class AuthService {
         private readonly usersService: UsersService,
         private readonly sessionsService: SessionsService,
         private readonly jwtService: JwtService,
+        private readonly passwordResetsService: PasswordResetsService,
+        private readonly mailService: MailService,
         private readonly configService: ConfigService,
     ) { }
+
+
+    async forgotPassword(
+        dto: ForgotPasswordDto,
+        requestIp?: string,
+    ) {
+        const genericResponse = {
+            message:
+                'Nếu email tồn tại trong hệ thống, mã xác nhận sẽ được gửi tới email đó',
+        };
+
+        const email =
+            dto.email.trim().toLowerCase();
+
+        const user =
+            await this.usersService.findByEmail(
+                email,
+            );
+
+        /*
+         * Không thông báo email có tồn tại hay không,
+         * tránh dò tìm tài khoản.
+         */
+        if (!user) {
+            /*
+             * Tạo một phép hash giả để giảm khác biệt
+             * thời gian phản hồi.
+             */
+            await bcrypt.hash(
+                String(
+                    randomInt(
+                        100000,
+                        1000000,
+                    ),
+                ),
+                10,
+            );
+
+            return genericResponse;
+        }
+
+        const canCreateRequest =
+            await this.passwordResetsService
+                .canCreateRequest(user.id);
+
+        /*
+         * Nếu gửi lại quá nhanh vẫn trả response chung,
+         * không tạo thêm email.
+         */
+        if (!canCreateRequest) {
+            return genericResponse;
+        }
+
+        const code = String(
+            randomInt(100000, 1000000),
+        );
+
+        const codeHash =
+            await bcrypt.hash(code, 10);
+
+        await this.passwordResetsService.create({
+            userId: user.id,
+            codeHash,
+            requestIp,
+        });
+
+        try {
+            await this.mailService
+                .sendPasswordResetCode(
+                    user.email,
+                    user.name,
+                    code,
+                );
+        } catch {
+            await this.passwordResetsService
+                .invalidateOpenRequests(
+                    user.id,
+                );
+
+            throw new ServiceUnavailableException(
+                'Không thể gửi email xác nhận. Vui lòng thử lại sau',
+            );
+        }
+
+        return genericResponse;
+    }
+
+    async verifyPasswordResetCode(
+        dto: VerifyResetCodeDto,
+    ) {
+        const user =
+            await this.usersService.findByEmail(
+                dto.email.trim().toLowerCase(),
+            );
+
+        if (!user) {
+            throw new UnauthorizedException(
+                'Mã xác nhận không hợp lệ hoặc đã hết hạn',
+            );
+        }
+
+        const resetRequest =
+            await this.passwordResetsService
+                .verifyCode(
+                    user.id,
+                    dto.code,
+                );
+
+        const payload: PasswordResetTokenPayload = {
+            sub: user.id,
+            rid: resetRequest.id,
+            type: 'password_reset',
+        };
+
+        const expiresIn = Number(
+            this.configService.get<string>(
+                'PASSWORD_RESET_TOKEN_EXPIRES_SECONDS',
+            ) ?? 600,
+        );
+
+        const resetToken =
+            await this.jwtService.signAsync(
+                payload,
+                {
+                    secret:
+                        this.getPasswordResetSecret(),
+                    expiresIn,
+                },
+            );
+
+        return {
+            message:
+                'Xác nhận mã thành công',
+            resetToken,
+            expiresIn,
+        };
+    }
+
+    async resetPassword(
+        dto: ResetPasswordDto,
+    ) {
+        if (
+            dto.newPassword !==
+            dto.confirmation
+        ) {
+            throw new BadRequestException(
+                'Mật khẩu xác nhận không khớp',
+            );
+        }
+
+        const payload =
+            await this.verifyPasswordResetToken(
+                dto.resetToken,
+            );
+
+        const passwordHash =
+            await bcrypt.hash(
+                dto.newPassword,
+                12,
+            );
+
+        await this.passwordResetsService
+            .consumeAndChangePassword(
+                payload.rid,
+                payload.sub,
+                passwordHash,
+            );
+
+        /*
+         * Thu hồi refresh token của tất cả thiết bị.
+         */
+        await this.sessionsService
+            .revokeAllByUserId(
+                payload.sub,
+            );
+
+        return {
+            message:
+                'Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại',
+        };
+    }
 
     async register(registerDto: RegisterDto) {
         const { name, email, password, confirmation, role } =
@@ -356,5 +548,51 @@ export class AuthService {
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,
         };
+    }
+
+    private getPasswordResetSecret(): string {
+        const secret =
+            this.configService.get<string>(
+                'PASSWORD_RESET_TOKEN_SECRET',
+            );
+
+        if (!secret) {
+            throw new Error(
+                'PASSWORD_RESET_TOKEN_SECRET chưa được cấu hình',
+            );
+        }
+
+        return secret;
+    }
+
+    private async verifyPasswordResetToken(
+        token: string,
+    ): Promise<PasswordResetTokenPayload> {
+        try {
+            const payload =
+                await this.jwtService
+                    .verifyAsync<PasswordResetTokenPayload>(
+                        token,
+                        {
+                            secret:
+                                this.getPasswordResetSecret(),
+                        },
+                    );
+
+            if (
+                payload.type !==
+                'password_reset'
+            ) {
+                throw new Error(
+                    'Invalid token type',
+                );
+            }
+
+            return payload;
+        } catch {
+            throw new UnauthorizedException(
+                'Reset token không hợp lệ hoặc đã hết hạn',
+            );
+        }
     }
 }

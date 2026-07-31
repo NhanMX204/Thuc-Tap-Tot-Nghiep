@@ -6,6 +6,7 @@ import {
     IsNotEmpty,
     IsOptional,
     IsString,
+    IsUrl,
     MaxLength,
     Min,
     MinLength,
@@ -27,13 +28,32 @@ export class CreateArticleDto {
     categoryId!: number;
 
     @ApiProperty({
-        example: 'https://example.com/cover.jpg',
+        example:
+            'https://res.cloudinary.com/.../image/upload/cover.jpg',
+        required: false,
+    })
+    @IsOptional()
+    @IsUrl(
+        {
+            require_protocol: true,
+        },
+        {
+            message:
+                'Đường dẫn ảnh không hợp lệ',
+        },
+    )
+    @MaxLength(500)
+    coverImage?: string;
+
+    @ApiProperty({
+        example:
+            'bao-dien-tu/articles/user-3/abcxyz',
         required: false,
     })
     @IsOptional()
     @IsString()
     @MaxLength(500)
-    coverImage?: string;
+    coverImagePublicId?: string;
 
     @ApiProperty({
         example: 'Kinh tế Việt Nam tăng trưởng',

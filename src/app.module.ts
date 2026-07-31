@@ -18,6 +18,9 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { ArticleViewsModule } from './article-views/article-views.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { PasswordResetsModule } from './password-resets/password-resets.module';
+import { MailModule } from './mail/mail.module';
+import { CloudinaryModule } from './cloudinary/cloudinary.module';
 
 @Module({
   imports: [
@@ -61,6 +64,12 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     SessionsModule,
 
     ArticleViewsModule,
+
+    PasswordResetsModule,
+
+    MailModule,
+
+    CloudinaryModule,
   ],
   controllers: [AppController],
   providers: [

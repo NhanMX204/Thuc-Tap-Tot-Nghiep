@@ -187,6 +187,95 @@ export class TransactionsService {
                 })
                 : null;
 
+        const isSuccessful =
+            validSignature &&
+            query.vnp_ResponseCode === '00' &&
+            query.vnp_TransactionStatus === '00';
+
+        /*
+         * Fallback: cập nhật trạng thái DB nếu IPN chưa xử lý
+         * (thường xảy ra khi IPN không reach được localhost trong dev).
+         * Chỉ cập nhật khi chữ ký hợp lệ và giao dịch còn PENDING.
+         */
+        if (
+            validSignature &&
+            transaction &&
+            transaction.status === TransactionStatus.PENDING
+        ) {
+            transaction.vnpResponseCode =
+                query.vnp_ResponseCode ?? null;
+
+            transaction.vnpTransactionStatus =
+                query.vnp_TransactionStatus ?? null;
+
+            transaction.vnpTransactionNo =
+                query.vnp_TransactionNo ?? null;
+
+            transaction.vnpBankCode =
+                query.vnp_BankCode ?? null;
+
+            transaction.vnpBankTransactionNo =
+                query.vnp_BankTranNo ?? null;
+
+            if (isSuccessful) {
+                transaction.status =
+                    TransactionStatus.SUCCESS;
+
+                transaction.paidAt =
+                    this.vnpayService.parseVnpayDate(
+                        query.vnp_PayDate,
+                    ) ?? new Date();
+
+                /*
+                 * Cập nhật VIP cho user khi thanh toán thành công.
+                 */
+                await this.dataSource.transaction(
+                    async (manager) => {
+                        const user = await manager.findOne(
+                            User,
+                            {
+                                where: {
+                                    id: transaction.userId,
+                                },
+                            },
+                        );
+
+                        if (user) {
+                            const now = new Date();
+
+                            const vipStartDate =
+                                user.vipExpiredAt &&
+                                    user.vipExpiredAt > now
+                                    ? user.vipExpiredAt
+                                    : now;
+
+                            user.vipExpiredAt =
+                                this.addDays(
+                                    vipStartDate,
+                                    transaction.packageDurationDays,
+                                );
+
+                            await manager.save(User, user);
+                        }
+
+                        await manager.save(
+                            VipTransaction,
+                            transaction,
+                        );
+                    },
+                );
+            } else {
+                transaction.status =
+                    query.vnp_ResponseCode === '24'
+                        ? TransactionStatus.CANCELLED
+                        : TransactionStatus.FAILED;
+
+                await this.transactionRepository.save(
+                    transaction,
+                );
+            }
+        }
+
         return {
             message: validSignature
                 ? 'Đã nhận kết quả từ VNPay'
@@ -194,12 +283,7 @@ export class TransactionsService {
 
             validSignature,
 
-            paymentSuccessful:
-                validSignature &&
-                query.vnp_ResponseCode ===
-                '00' &&
-                query.vnp_TransactionStatus ===
-                '00',
+            paymentSuccessful: isSuccessful,
 
             responseCode:
                 query.vnp_ResponseCode ??

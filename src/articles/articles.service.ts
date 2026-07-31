@@ -2,6 +2,7 @@ import {
     BadRequestException,
     ForbiddenException,
     Injectable,
+    Logger,
     NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -14,6 +15,8 @@ import {
     ArticleViewsService,
     RecordArticleViewInput,
 } from '../article-views/article-views.service';
+
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 
 import { CategoriesService } from '../categories/categories.service';
 import { UserRole } from '../common/enums/user-role.enum';
@@ -33,6 +36,10 @@ import { ArticleType } from './enums/article-type.enum';
 
 @Injectable()
 export class ArticlesService {
+    private readonly logger =
+        new Logger(
+            ArticlesService.name,
+        );
     constructor(
         @InjectRepository(Article)
         private readonly articleRepository: Repository<Article>,
@@ -40,6 +47,8 @@ export class ArticlesService {
         private readonly categoriesService: CategoriesService,
 
         private readonly articleViewsService: ArticleViewsService,
+
+        private readonly cloudinaryService: CloudinaryService,
     ) { }
 
     async search(query: ArticleSearchQueryDto) {
@@ -300,21 +309,54 @@ export class ArticlesService {
             dto.title,
         );
 
+        const coverImage =
+            this.validateCoverImage(
+                dto.coverImage,
+                dto.coverImagePublicId,
+                author,
+            );
+
         const article =
             this.articleRepository.create({
                 authorId: author.id,
-                categoryId: dto.categoryId,
-                coverImage: dto.coverImage?.trim() || null,
-                title: dto.title.trim(),
+
+                categoryId:
+                    dto.categoryId,
+
+                coverImage:
+                    coverImage.url,
+
+                coverImagePublicId:
+                    coverImage.publicId,
+
+                title:
+                    dto.title.trim(),
+
                 slug,
-                sapo: dto.sapo.trim(),
-                content: dto.content.trim(),
-                type: dto.type,
-                status: ArticleStatus.PENDING,
-                rejectionReason: null,
-                isVisible: false,
-                viewCount: 0,
-                publishedAt: null,
+
+                sapo:
+                    dto.sapo.trim(),
+
+                content:
+                    dto.content.trim(),
+
+                type:
+                    dto.type,
+
+                status:
+                    ArticleStatus.PENDING,
+
+                rejectionReason:
+                    null,
+
+                isVisible:
+                    false,
+
+                viewCount:
+                    0,
+
+                publishedAt:
+                    null,
             });
 
         const savedArticle =
@@ -340,49 +382,178 @@ export class ArticlesService {
                 articleId,
             );
 
-        this.ensureStaffCanManage(article, user);
-
-        await this.categoriesService.findActiveById(
-            dto.categoryId,
+        this.ensureStaffCanManage(
+            article,
+            user,
         );
 
-        if (article.title !== dto.title.trim()) {
+        await this.categoriesService
+            .findActiveById(dto.categoryId);
+
+        const normalizedTitle =
+            dto.title.trim();
+
+        if (
+            article.title !== normalizedTitle
+        ) {
             article.slug =
                 await this.createUniqueSlug(
-                    dto.title,
+                    normalizedTitle,
                     article.id,
                 );
         }
 
-        article.categoryId = dto.categoryId;
-        article.coverImage =
-            dto.coverImage?.trim() || null;
-        article.title = dto.title.trim();
-        article.sapo = dto.sapo.trim();
-        article.content = dto.content.trim();
-        article.type = dto.type;
+        /*
+         * Lưu publicId cũ trước khi thay đổi.
+         * Sau khi database lưu thành công mới xóa ảnh cũ.
+         */
+        const oldCoverImagePublicId =
+            article.coverImagePublicId;
+
+        article.categoryId =
+            dto.categoryId;
+
+        article.title =
+            normalizedTitle;
+
+        article.sapo =
+            dto.sapo.trim();
+
+        article.content =
+            dto.content.trim();
+
+        article.type =
+            dto.type;
 
         /*
-         * Khi AUTHOR sửa bài, bài phải được duyệt lại.
-         * ADMIN có thể sửa mà vẫn giữ trạng thái hiện tại.
+         * Không cho phép vừa yêu cầu xóa ảnh,
+         * vừa gửi thông tin ảnh mới.
          */
-        if (user.role === UserRole.AUTHOR) {
-            article.status = ArticleStatus.PENDING;
-            article.isVisible = false;
-            article.rejectionReason = null;
-            article.publishedAt = null;
+        if (
+            dto.removeCoverImage === true &&
+            (
+                dto.coverImage !== undefined ||
+                dto.coverImagePublicId !==
+                undefined
+            )
+        ) {
+            throw new BadRequestException(
+                'Không thể vừa xóa vừa thay ảnh bìa',
+            );
         }
 
-        await this.articleRepository.save(article);
+        /*
+         * Trường hợp xóa ảnh bìa.
+         */
+        if (
+            dto.removeCoverImage === true
+        ) {
+            article.coverImage = null;
+            article.coverImagePublicId = null;
+        }
+
+        /*
+         * Trường hợp thay ảnh bìa.
+         *
+         * Phải truyền đồng thời:
+         * - coverImage
+         * - coverImagePublicId
+         */
+        else if (
+            dto.coverImage !== undefined ||
+            dto.coverImagePublicId !==
+            undefined
+        ) {
+            const newCoverImage =
+                this.validateCoverImage(
+                    dto.coverImage,
+                    dto.coverImagePublicId,
+                    user,
+                );
+
+            article.coverImage =
+                newCoverImage.url;
+
+            article.coverImagePublicId =
+                newCoverImage.publicId;
+        }
+
+        /*
+         * Nếu không truyền các trường liên quan ảnh,
+         * ảnh bìa hiện tại sẽ được giữ nguyên.
+         */
+
+        /*
+         * AUTHOR sửa bài thì bài phải được duyệt lại.
+         * ADMIN sửa bài thì giữ nguyên trạng thái hiện tại.
+         */
+        if (
+            user.role === UserRole.AUTHOR
+        ) {
+            article.status =
+                ArticleStatus.PENDING;
+
+            article.isVisible = false;
+
+            article.rejectionReason =
+                null;
+
+            article.publishedAt =
+                null;
+        }
+
+        /*
+         * Lưu database trước.
+         */
+        const savedArticle =
+            await this.articleRepository.save(
+                article,
+            );
+
+        /*
+         * Chỉ xóa ảnh cũ khi:
+         * - Có ảnh cũ.
+         * - publicId mới khác publicId cũ.
+         *
+         * Điều này áp dụng cho cả:
+         * - Xóa ảnh.
+         * - Thay ảnh mới.
+         */
+        if (
+            oldCoverImagePublicId &&
+            oldCoverImagePublicId !==
+            savedArticle.coverImagePublicId
+        ) {
+            try {
+                await this.cloudinaryService
+                    .deleteImage(
+                        oldCoverImagePublicId,
+                    );
+            } catch (error) {
+                /*
+                 * Không làm thất bại toàn bộ API vì
+                 * bài viết đã được cập nhật trong database.
+                 *
+                 * Ảnh cũ có thể được dọn dẹp bằng tác vụ sau.
+                 */
+                this.logger.warn(
+                    `Không thể xóa ảnh Cloudinary cũ: ${oldCoverImagePublicId}`,
+                    error instanceof Error
+                        ? error.message
+                        : String(error),
+                );
+            }
+        }
 
         return {
             message:
                 user.role === UserRole.AUTHOR
                     ? 'Cập nhật thành công, bài viết đang chờ duyệt lại'
                     : 'Cập nhật bài viết thành công',
+
             article:
                 await this.findStaffArticleDetail(
-                    article.id,
+                    savedArticle.id,
                     user,
                 ),
         };
@@ -753,13 +924,27 @@ export class ArticlesService {
         article: Article,
     ) {
         return {
-            ...this.toListResponse(article),
-            status: article.status,
-            isVisible: article.isVisible,
+            ...this.toListResponse(
+                article,
+            ),
+
+            coverImagePublicId:
+                article.coverImagePublicId,
+
+            status:
+                article.status,
+
+            isVisible:
+                article.isVisible,
+
             rejectionReason:
                 article.rejectionReason,
-            createdAt: article.createdAt,
-            updatedAt: article.updatedAt,
+
+            createdAt:
+                article.createdAt,
+
+            updatedAt:
+                article.updatedAt,
         };
     }
 
@@ -767,6 +952,51 @@ export class ArticlesService {
         return {
             ...this.toStaffListResponse(article),
             content: article.content,
+        };
+    }
+
+    private validateCoverImage(
+        coverImage:
+            | string
+            | undefined,
+
+        coverImagePublicId:
+            | string
+            | undefined,
+
+        user: AuthenticatedUser,
+    ): {
+        url: string | null;
+        publicId: string | null;
+    } {
+        const normalizedUrl =
+            coverImage?.trim() || null;
+
+        const normalizedPublicId =
+            coverImagePublicId?.trim() ||
+            null;
+
+        if (
+            Boolean(normalizedUrl) !==
+            Boolean(normalizedPublicId)
+        ) {
+            throw new BadRequestException(
+                'Phải truyền đồng thời coverImage và coverImagePublicId',
+            );
+        }
+
+        if (normalizedPublicId) {
+            this.cloudinaryService
+                .assertCanManageArticleImage(
+                    normalizedPublicId,
+                    user,
+                );
+        }
+
+        return {
+            url: normalizedUrl,
+            publicId:
+                normalizedPublicId,
         };
     }
 }

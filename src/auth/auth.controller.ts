@@ -20,6 +20,9 @@ import { Public } from '../common/decorators/public.decorator';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { VerifyResetCodeDto } from './dto/verify-reset-code.dto';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -132,6 +135,55 @@ export class AuthController {
         await this.authService.logout(refreshToken);
 
         this.clearRefreshCookie(response);
+    }
+    @Public()
+    @Post('forgot-password')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({
+        summary:
+            'Gửi mã xác nhận quên mật khẩu qua email',
+    })
+    forgotPassword(
+        @Body()
+        dto: ForgotPasswordDto,
+
+        @Req()
+        request: Request,
+    ) {
+        return this.authService.forgotPassword(
+            dto,
+            request.ip,
+        );
+    }
+
+    @Public()
+    @Post('verify-reset-code')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({
+        summary:
+            'Xác thực mã đặt lại mật khẩu',
+    })
+    verifyResetCode(
+        @Body()
+        dto: VerifyResetCodeDto,
+    ) {
+        return this.authService
+            .verifyPasswordResetCode(dto);
+    }
+
+    @Public()
+    @Post('reset-password')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({
+        summary:
+            'Đặt mật khẩu mới',
+    })
+    resetPassword(
+        @Body()
+        dto: ResetPasswordDto,
+    ) {
+        return this.authService
+            .resetPassword(dto);
     }
 
     private getRefreshTokenFromCookie(

@@ -4,6 +4,7 @@ import {
     Get,
     Post,
     Query,
+    Redirect,
     Req,
 } from '@nestjs/common';
 import {
@@ -11,6 +12,7 @@ import {
     ApiOperation,
     ApiTags,
 } from '@nestjs/swagger';
+import { ConfigService } from '@nestjs/config';
 import type { Request } from 'express';
 
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -24,6 +26,7 @@ import { TransactionsService } from './transactions.service';
 export class TransactionsController {
     constructor(
         private readonly transactionsService: TransactionsService,
+        private readonly configService: ConfigService,
     ) { }
 
     @Post('create')
@@ -51,17 +54,33 @@ export class TransactionsController {
 
     @Public()
     @Get('vnpay-return')
+    @Redirect()
     @ApiOperation({
         summary:
-            'Nhận kết quả chuyển hướng từ VNPay',
+            'Nhận kết quả chuyển hướng từ VNPay, redirect về FE',
     })
-    vnpayReturn(
+    async vnpayReturn(
         @Query()
         query: Record<string, string>,
     ) {
-        return this.transactionsService.handleReturn(
-            query,
-        );
+        const result = await this.transactionsService.handleReturn(query);
+
+        const frontendUrl = (
+            this.configService.get<string>('FRONTEND_URL') ??
+            'http://localhost:5173'
+        ).replace(/\/$/, '');
+
+        // vnp_ResponseCode '24' là người dùng huỷ thanh toán
+        const cancelled =
+            query.vnp_ResponseCode === '24';
+
+        const successParam = result.paymentSuccessful ? 'true' : 'false';
+        const cancelledParam = cancelled ? 'true' : 'false';
+
+        return {
+            url: `${frontendUrl}/payment-result?success=${successParam}&cancelled=${cancelledParam}`,
+            statusCode: 302,
+        };
     }
 
     @Public()
