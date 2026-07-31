@@ -1,98 +1,267 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# 📰 Backend – Báo Điện Tử
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Backend RESTful API cho hệ thống báo điện tử, xây dựng bằng **NestJS**, **TypeORM** và **MySQL**.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+---
 
-## Description
+## 🛠️ Công nghệ sử dụng
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+| Công nghệ | Phiên bản | Mô tả |
+|---|---|---|
+| [NestJS](https://nestjs.com/) | ^11 | Framework Node.js chính |
+| [TypeORM](https://typeorm.io/) | ^1.1 | ORM tương tác cơ sở dữ liệu |
+| MySQL | ≥ 8.0 | Cơ sở dữ liệu quan hệ |
+| [JWT](https://jwt.io/) | - | Xác thực người dùng |
+| [Cloudinary](https://cloudinary.com/) | ^2 | Lưu trữ & quản lý ảnh |
+| [Swagger](https://swagger.io/) | ^11 | Tài liệu API tự động |
+| Nodemailer | ^9 | Gửi email (quên mật khẩu, v.v.) |
+| VNPay | - | Thanh toán trực tuyến |
+| PDFKit | ^0.19 | Xuất file PDF |
 
-## Project setup
+---
 
-```bash
-$ npm install
+## 📁 Cấu trúc thư mục
+
+```
+src/
+├── app.module.ts              # Module gốc
+├── main.ts                    # Entry point
+│
+├── auth/                      # Xác thực (đăng nhập, đăng ký, JWT)
+├── users/                     # Quản lý người dùng
+├── articles/                  # Quản lý bài viết
+├── article-views/             # Theo dõi lượt xem bài viết
+├── categories/                # Danh mục bài viết
+├── comments/                  # Bình luận
+├── subscriptions/             # Gói đăng ký VIP
+├── vip-packages/              # Quản lý gói VIP
+├── transactions/              # Giao dịch & thanh toán VNPay
+├── stats/                     # Thống kê
+├── sessions/                  # Quản lý phiên đăng nhập
+├── cloudinary/                # Upload & quản lý ảnh Cloudinary
+├── mail/                      # Gửi email
+├── password-resets/           # Quên mật khẩu / đặt lại mật khẩu
+├── database/                  # Seed data
+└── common/                    # Guards, filters, decorators dùng chung
 ```
 
-## Compile and run the project
+---
+
+## ⚙️ Yêu cầu hệ thống
+
+Trước khi chạy dự án, hãy đảm bảo máy bạn đã cài:
+
+- **Node.js** ≥ 18.x — [Tải về](https://nodejs.org/)
+- **npm** ≥ 9.x (đi kèm Node.js)
+- **MySQL** ≥ 8.0 — [Tải về](https://dev.mysql.com/downloads/)
+- **Git** — [Tải về](https://git-scm.com/)
+
+---
+
+## 🚀 Hướng dẫn cài đặt & chạy dự án
+
+### 1. Clone repository
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+git clone https://github.com/NhanMX204/Thuc-Tap-Tot-Nghiep.git
+cd Thuc-Tap-Tot-Nghiep/backend-bao-dien-tu
 ```
 
-## Run tests
+### 2. Cài đặt dependencies
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm install
 ```
 
-## Deployment
+### 3. Cấu hình biến môi trường
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+Sao chép file `.env.example` thành `.env`:
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+cp .env.example .env
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Sau đó mở file `.env` và điền đầy đủ các giá trị:
 
-## Resources
+```env
+# ===== SERVER =====
+PORT=8080
 
-Check out a few resources that may come in handy when working with NestJS:
+# ===== DATABASE (MySQL) =====
+DB_HOST=localhost
+DB_PORT=3306
+DB_USERNAME=root
+DB_PASSWORD=your_mysql_password
+DB_DATABASE=bao_dien_tu
+DB_SYNC=true
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+# ===== JWT =====
+JWT_SECRET=your_super_secret_key
+JWT_EXPIRES_IN=1d
 
-## Support
+# ===== FRONTEND =====
+FRONTEND_URL=http://localhost:3000
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+# ===== VNPAY (thanh toán) =====
+VNPAY_TMN_CODE=your_tmn_code
+VNPAY_HASH_SECRET=your_hash_secret
+VNPAY_URL=https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+VNPAY_RETURN_URL=http://localhost:8080/api/transactions/vnpay-return
 
-## Stay in touch
+# ===== CLOUDINARY (upload ảnh) =====
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+CLOUDINARY_FOLDER=bao-dien-tu
+```
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+> **Lưu ý:** Xem hướng dẫn lấy thông tin Cloudinary tại mục [Cấu hình Cloudinary](#-cấu-hình-cloudinary) bên dưới.
 
-## License
+### 4. Tạo cơ sở dữ liệu MySQL
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Mở MySQL và tạo database:
+
+```sql
+CREATE DATABASE bao_dien_tu CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
+
+> **Lưu ý:** Khi `DB_SYNC=true`, TypeORM sẽ **tự động tạo các bảng** khi server khởi động lần đầu. Không cần chạy migration thủ công.
+
+### 5. (Tuỳ chọn) Seed dữ liệu mẫu
+
+Nếu bạn muốn có dữ liệu mẫu ban đầu:
+
+```bash
+npm run seed
+```
+
+### 6. Khởi động server
+
+**Chế độ phát triển (có hot-reload):**
+
+```bash
+npm run start:dev
+```
+
+**Chế độ production:**
+
+```bash
+npm run build
+npm run start:prod
+```
+
+---
+
+## 🌐 Truy cập sau khi khởi động
+
+| Đường dẫn | Mô tả |
+|---|---|
+| `http://localhost:8080/api` | Base URL của tất cả API |
+| `http://localhost:8080/swagger` | Giao diện Swagger UI – tài liệu API |
+
+---
+
+## 📋 Danh sách các lệnh npm
+
+| Lệnh | Mô tả |
+|---|---|
+| `npm run start:dev` | Chạy server ở chế độ development (watch mode) |
+| `npm run start:prod` | Chạy server ở chế độ production |
+| `npm run build` | Build dự án ra thư mục `dist/` |
+| `npm run seed` | Chạy seed dữ liệu mẫu vào database |
+| `npm run lint` | Kiểm tra và tự fix lỗi ESLint |
+| `npm run format` | Format code bằng Prettier |
+| `npm run test` | Chạy unit test |
+| `npm run test:cov` | Chạy test với báo cáo coverage |
+
+---
+
+## ☁️ Cấu hình Cloudinary
+
+Cloudinary được dùng để lưu trữ ảnh bìa bài viết và ảnh đại diện người dùng.
+
+1. Đăng ký tài khoản miễn phí tại [cloudinary.com](https://cloudinary.com/)
+2. Vào **Dashboard** → sao chép các thông tin:
+   - **Cloud Name**
+   - **API Key**
+   - **API Secret**
+3. Điền vào file `.env`:
+
+```env
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+CLOUDINARY_FOLDER=bao-dien-tu
+```
+
+---
+
+## 💳 Cấu hình VNPay (Sandbox)
+
+VNPay được dùng cho tính năng thanh toán gói VIP.
+
+1. Đăng ký tài khoản sandbox tại [sandbox.vnpayment.vn](https://sandbox.vnpayment.vn/)
+2. Lấy `TmnCode` và `HashSecret` từ cổng thanh toán sandbox
+3. Điền vào file `.env`:
+
+```env
+VNPAY_TMN_CODE=your_tmn_code
+VNPAY_HASH_SECRET=your_hash_secret
+```
+
+---
+
+## 🔐 Xác thực & Phân quyền
+
+- API sử dụng **JWT (JSON Web Token)** lưu trong **HTTP-Only Cookie**
+- Các route được bảo vệ mặc định bởi `JwtAuthGuard`
+- Phân quyền theo role bằng `RolesGuard`
+- Để bỏ bảo vệ cho một route cụ thể, dùng decorator `@Public()`
+
+---
+
+## 📖 Tài liệu API (Swagger)
+
+Sau khi khởi động server, truy cập:
+
+```
+http://localhost:8080/swagger
+```
+
+Swagger UI liệt kê đầy đủ tất cả các endpoint, tham số và cho phép test API trực tiếp trên trình duyệt.
+
+Để test các API cần xác thực:
+1. Đăng nhập qua `POST /api/auth/login`
+2. Nhấn nút **Authorize 🔒** ở góc trên phải Swagger UI
+3. Nhập Bearer token nhận được
+
+---
+
+## 🐛 Xử lý lỗi phổ biến
+
+**Lỗi kết nối MySQL:**
+```
+Error: connect ECONNREFUSED 127.0.0.1:3306
+```
+→ Kiểm tra MySQL đang chạy và thông tin `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD` trong `.env` đúng chưa.
+
+---
+
+**Lỗi thiếu biến môi trường:**
+```
+Error: JWT_SECRET is not defined
+```
+→ Đảm bảo đã tạo file `.env` từ `.env.example` và điền đầy đủ giá trị.
+
+---
+
+**Port đã bị chiếm dụng:**
+```
+Error: listen EADDRINUSE :::8080
+```
+→ Đổi `PORT` trong `.env` sang giá trị khác (vd: `3001`, `4000`).
+
+---
+
+## 👤 Tác giả
+Mai Xuan Nhan
